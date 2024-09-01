@@ -22,7 +22,7 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew build
-        working-directory: android-app
+        working-directory: android
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.2.0-node20
