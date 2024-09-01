@@ -1,66 +1,62 @@
 name: DummyApp
-
+ 
 on:
+
   pull_request:
+
     branches: [main]
+
   push:
+
     branches: [main]
-
+ 
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
-
+ 
     steps:
+
       - name: Checkout
+
         uses: actions/checkout@v4.1.7
-
+ 
       - name: Set up Node.js
+
         uses: actions/setup-node@v3
+
         with:
+
           node-version: '18'  # Use the Node.js version your project requires
-
+ 
       - name: Install Dependencies
+
         run: npm install  # or 'yarn install' if you use Yarn
-
+ 
       - name: Setup Java JDK
+
         uses: actions/setup-java@v4.2.2
+
         with:
+
           distribution: 'temurin'
+
           java-version: '17'
-
+ 
       - name: Build with Gradle
+
         run: ./gradlew build
+
         working-directory: android
+ 
+      - name: Upload a Build Artifact
 
-      - name: Run Tests
-        run: ./gradlew test
-        working-directory: android
-
-      - name: Upload Test Results
-        if: always()
         uses: actions/upload-artifact@v3.2.0-node20
-        with:
-          name: Test-Results
-          path: android/app/build/reports/tests/testDebugUnitTest
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3.2.0-node20
         with:
+
           name: DummyApp.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Notify User of Test Results
-        if: failure()
-        run: |
-          echo "Test failed. Sending notification..."
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"Tests failed for DummyApp on the main branch."}' \
-          YOUR_NOTIFICATION_SERVICE_WEBHOOK_URL
-
-      - name: Notify User of Successful Build and Tests
-        if: success()
-        run: |
-          echo "Build and tests passed. Sending notification..."
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"Build and tests passed for DummyApp on the main branch."}' \
-          YOUR_NOTIFICATION_SERVICE_WEBHOOK_URL
+          path: app/build/outputs/apk/debug/app-debug.apk
+ 
