@@ -1,79 +1,108 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-# Getting Started
+## DummyApp
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+DummyApp is a React Native application that allows users to scan for Bluetooth devices, connect to them, read their battery levels, and synchronize data with Firestore. It also handles offline storage using EncryptedStorage and syncs with the cloud once an internet connection is restored. This project is configured with a CI/CD pipeline using GitHub Actions.
 
-## Step 1: Start the Metro Server
+## Features
+Scan for nearby Bluetooth devices.
+Connect and disconnect Bluetooth devices.
+Read and display battery levels of connected devices.
+Synchronize data with Firestore when online.
+Store data locally using EncryptedStorage when offline and sync once online.
+Prerequisites
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## Before running the project, ensure you have the following installed:
 
-To start Metro, run the following command from the _root_ of your React Native project:
+Node.js and npm
+React Native CLI
+Android Studio / Xcode
+Firebase account with Firestore enabled
+GitHub account with GitHub Actions enabled
+Setup
+Clone the Repository
+bash
+Copy code
+git clone https://github.com/your-username/DummyApp.git
+cd DummyApp
+Install Dependencies
+bash
+Copy code
+npm install
+Set Up Firebase
+Create a Firebase project in the Firebase Console.
+Enable Firestore in your Firebase project.
+Download the google-services.json file for Android and GoogleService-Info.plist for iOS.
+Place google-services.json in android/app/ and GoogleService-Info.plist in ios/.
+Permissions
+Ensure the necessary permissions for Bluetooth and Location are granted:
 
-```bash
-# using npm
-npm start
+Android: Permissions are requested in the app for Bluetooth and Location. Ensure your AndroidManifest.xml is correctly configured.
+iOS: Ensure Bluetooth and Location permissions are added to your Info.plist.
+Running the Application
+For Android:
 
-# OR using Yarn
-yarn start
-```
+bash
+Copy code
+npx react-native run-android
+For iOS:
 
-## Step 2: Start your Application
+bash
+Copy code
+npx react-native run-ios
+## Usage
+Open the app on your device.
+Click on "Scan Bluetooth Devices" to search for nearby devices.
+Connect to a device by selecting it from the list.
+View the battery level of the connected device.
+Disconnect the device if needed.
+The app will automatically sync with Firestore when an internet connection is available.
+CI/CD Pipeline with GitHub Actions
+The project is configured with a CI/CD pipeline using GitHub Actions. The pipeline automatically builds the project on each push to the main branch and on pull requests.
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+## Workflow Configuration
+The workflow is defined in .github/workflows/ci.yml:
 
-### For Android
+yaml
+Copy code
+name: DummyApp
 
-```bash
-# using npm
-npm run android
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
-# OR using Yarn
-yarn android
-```
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-### For iOS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
 
-```bash
-# using npm
-npm run ios
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4.2.2
+        with:
+          distribution: 'temurin'
+          java-version: '11'
 
-# OR using Yarn
-yarn ios
-```
+      - name: Build with Gradle
+        run: ./gradlew build
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v3.2.0-node20
+        with:
+          name: DummyApp.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+## This workflow does the following:
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## Checks out the code from the repository.
+Sets up Java JDK 11.
+Builds the project using Gradle.
+Uploads the APK as a build artifact.
+Troubleshooting
+If you encounter issues, consider the following:
 
-## Step 3: Modifying your App
-
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Ensure all dependencies are installed correctly.
+Verify that the correct permissions are granted on your device.
+Check the logs in the console for error messages.
