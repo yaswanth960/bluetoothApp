@@ -9,7 +9,7 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
   moduleNameMapper: {
-    '\\.(css|less)$': 'identity-obj-proxy',
+    // '\\.(css|less)$': 'identity-obj-proxy',
     '^@react-native-community/netinfo$': '<rootDir>/__mocks__/react-native-community/netinfo.js',
     "^react-native-permissions$": "<rootDir>/__mocks__/react-native-permissions.js",
     "^@react-native-firebase/firestore$": "<rootDir>/__mocks__/@react-native-firebase/firestore.js",
