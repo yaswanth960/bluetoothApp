@@ -33,6 +33,10 @@ jobs:
       - name: Install Dependencies
 
         run: npm install  # or 'yarn install' if you use Yarn
+
+       # Run tests
+      - name: Run Tests
+        run: npm test
  
       - name: Setup Java JDK
 
@@ -59,4 +63,5 @@ jobs:
           name: DummyApp.apk
 
           path: app/build/outputs/apk/debug/app-debug.apk
+          
  

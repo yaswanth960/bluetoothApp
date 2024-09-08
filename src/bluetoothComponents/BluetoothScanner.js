@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   Alert,
   useColorScheme,
+//   StatusBar,
   SafeAreaView,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import {BleManager} from 'react-native-ble-plx';
 import {Buffer} from 'buffer';
@@ -20,15 +20,12 @@ import {
   openSettings,
 } from 'react-native-permissions';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
-import {firestore} from '../../firebaseConfig';
+import firestore from '@react-native-firebase/firestore';
 import NetInfo from '@react-native-community/netinfo';
-import SQLite from 'react-native-sqlite-storage';
-import {styles} from '../styles/styles';
-import {syncLocalDataWithFirestore} from './SyncLocalDataWithFirestore';
-
 const db = SQLite.openDatabase({name: 'app.db', location: 'default'});
-
-const SimulateBluetoothDevice = () => {
+import SQLite from 'react-native-sqlite-storage';
+import { styles } from '../styles/styles';
+const BluetoothScanner = () => {
   const [devices, setDevices] = useState([]);
   const [connectedDevices, setConnectedDevices] = useState([]);
   const [manager, setManager] = useState(null);
@@ -50,83 +47,27 @@ const SimulateBluetoothDevice = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch the initial connectivity state
-    NetInfo.fetch().then(state => {
-      if (state.isConnected) {
-        syncLocalDataWithFirestore();
-      }
-    });
-
-    // Add event listener for connectivity changes
+    // Check network connectivity and sync local storage with Firestore if online
     const unsubscribe = NetInfo.addEventListener(state => {
       if (state.isConnected) {
         syncLocalDataWithFirestore();
       }
     });
-
-    // Cleanup the event listener
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
+    // Fetch data from Firestore or local storage based on network availability
     const fetchData = async () => {
       const state = await NetInfo.fetch();
       if (state.isConnected) {
-        const data = await fetchDataFromFirestore();
-        if (data.batteryData) {
-          setBatteryPercentage(data.batteryData.batteryPercentage);
-          setConnectedDevices(data.batteryData.connectedDevices);
-        }
-        if (data.randomData) {
-          setRandomNumbers(data.randomData.data);
-          // setTimestamp(data.randomData.timestamp); // Uncomment if needed
-        }
+        fetchDataFromFirestore();
       } else {
         fetchDataFromLocalStorage();
       }
     };
     fetchData();
   }, []);
-
-  const fetchDataFromFirestore = async () => {
-    try {
-      const documentRef = firestore()
-        .collection('BatteryData')
-        .doc('cVenm3ridGZfrILP6rDi'); // Use the same document ID
-
-      // Fetch the document
-      const documentSnapshot = await documentRef.get();
-
-      if (documentSnapshot.exists) {
-        const data = documentSnapshot.data();
-
-        // Update the states with fetched data
-        setBatteryPercentage(data.batteryPercentage || 0); // Update battery percentage
-        setConnectedDevices(JSON.parse(data.connectedDevices || '[]')); // Parse and update connected devices
-      } else {
-        console.log('Document does not exist');
-      }
-
-      const document = firestore()
-        .collection('randomData')
-        .doc('z2ivDSv7ubr1BlnKTdmW'); // Use the same document ID
-
-      // Fetch the document
-      const documentSnapshotData = await document.get();
-
-      if (documentSnapshotData.exists) {
-        const data = documentSnapshotData.data();
-
-        // Update the state with fetched data
-        setRandomNumbers(data.data || []); // Update randomData
-        // setTimestamp(data.timestamp?.toDate() || null); // Convert Firestore timestamp to JavaScript date
-      } else {
-        console.log('Document does not exist');
-      }
-    } catch (error) {
-      console.error('Error fetching data from Firestore:', error);
-    }
-  };
 
   const checkPermissions = async () => {
     const bluetoothStatus = await check(PERMISSIONS.ANDROID.BLUETOOTH_SCAN);
@@ -197,7 +138,6 @@ const SimulateBluetoothDevice = () => {
       console.error('Connection failed', error);
     }
   };
-
   const intervalIdRef = useRef(null); // Use ref to store interval ID
 
   const startGeneratingRandomData = () => {
@@ -489,6 +429,39 @@ const SimulateBluetoothDevice = () => {
     }
   };
 
+  const fetchDataFromFirestore = async () => {
+    try {
+      // Fetch batteryData
+      const batteryDoc = await firestore()
+        .collection('BatteryData')
+        .doc('cVenm3ridGZfrILP6rDi')
+        .get();
+
+      if (batteryDoc.exists) {
+        const batteryData = batteryDoc.data();
+        const batteryPercentage = batteryData.batteryPercentage || 0;
+        const connectedDevices = JSON.parse(
+          batteryData.connectedDevices || '[]',
+        );
+        setBatteryPercentage(batteryPercentage);
+        setConnectedDevices(connectedDevices);
+      }
+
+      // Fetch randomData
+      const randomDataDoc = await firestore()
+        .collection('randomData')
+        .doc('z2ivDSv7ubr1BlnKTdmW')
+        .get();
+
+      if (randomDataDoc.exists) {
+        const randomData = randomDataDoc.data();
+        setRandomNumbers(randomData.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data from Firestore:', error);
+    }
+  };
+
   const fetchDataFromLocalStorage = async () => {
     try {
       await db.transaction(tx => {
@@ -558,62 +531,112 @@ const SimulateBluetoothDevice = () => {
     }
   };
 
-  const ITEM_HEIGHT = 50;
-  const PAGE_SIZE = 20;
+  const syncLocalDataWithFirestore = async () => {
+    try {
+      // Check network connectivity
+      const state = await NetInfo.fetch();
+      const isConnected = state.isConnected;
 
-  const [visibleData, setVisibleData] = useState([]); // Data to display in FlatList
-  const [page, setPage] = useState(1); // Tracks current page
-  const [loading, setLoading] = useState(false);
+      await db.transaction(async tx => {
+        // Fetch randomData
+        tx.executeSql(
+          'CREATE TABLE IF NOT EXISTS randomData (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)',
+          [],
+          () => {
+            tx.executeSql(
+              'SELECT * FROM randomData',
+              [],
+              async (_, {rows}) => {
+                if (rows.length > 0) {
+                  const data = JSON.parse(rows.item(0).data);
+                  // setRandomNumbers(data);
+
+                  // Sync with Firestore if online
+                  if (isConnected) {
+                    await firestore()
+                      .collection('randomData')
+                      .doc('z2ivDSv7ubr1BlnKTdmW')
+                      .update({data});
+                  }
+                }
+              },
+              (_, error) =>
+                console.error(
+                  'Failed to fetch data from SQLite (randomData):',
+                  error,
+                ),
+            );
+          },
+          (_, error) =>
+            console.error(
+              'Failed to create randomData table in SQLite:',
+              error,
+            ),
+        );
+
+        // Fetch batteryData
+        tx.executeSql(
+          'CREATE TABLE IF NOT EXISTS batteryData (id INTEGER PRIMARY KEY AUTOINCREMENT, batteryPercentage INTEGER, connectedDevices TEXT, timestamp INTEGER)',
+          [],
+          () => {
+            tx.executeSql(
+              'SELECT * FROM batteryData ORDER BY timestamp DESC LIMIT 1',
+              [],
+              async (_, {rows}) => {
+                if (rows.length > 0) {
+                  const row = rows.item(0);
+                  const batteryPercentage = row.batteryPercentage;
+                  const connectedDevices = JSON.parse(row.connectedDevices);
+
+                  // Sync with Firestore if online
+                  if (isConnected) {
+                    await firestore()
+                      .collection('BatteryData')
+                      .doc('cVenm3ridGZfrILP6rDi')
+                      .update({
+                        batteryPercentage,
+                        connectedDevices,
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                      });
+                  }
+                }
+              },
+              (_, error) =>
+                console.error(
+                  'Failed to fetch data from SQLite (batteryData):',
+                  error,
+                ),
+            );
+          },
+          (_, error) =>
+            console.error(
+              'Failed to create batteryData table in SQLite:',
+              error,
+            ),
+        );
+      });
+    } catch (error) {
+      console.error('Failed to fetch data from local storage:', error);
+    }
+  };
+
+  const renderItem = ({item}) => (
+    <View style={style.itemContainer}>
+      <Text style={style.itemText}>{item}</Text>
+    </View>
+  );
+
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
-  const RenderItem = React.memo(({item}) => (
-    <View style={style.itemContainer}>
-      <Text style={style.itemText}>{item}</Text>
-    </View>
-  ));
-
-  // Load more data in FlatList when state has more than PAGE_SIZE * current page
-  const loadMoreData = useCallback(() => {
-    if (loading) return; // Prevent loading if already loading
-
-    if (randomNumbers.length > PAGE_SIZE * page) {
-      setLoading(true);
-      const startIndex = (page - 1) * PAGE_SIZE;
-      const endIndex = page * PAGE_SIZE;
-      setVisibleData(prev => [
-        ...prev,
-        ...randomNumbers.slice(startIndex, endIndex),
-      ]);
-      setPage(prevPage => prevPage + 1);
-      setLoading(false);
-    }
-  }, [page, randomNumbers, loading]);
-
-  useEffect(() => {
-    if (randomNumbers.length >= PAGE_SIZE * page) {
-      loadMoreData(); // Trigger data load if enough data is available
-    }
-  }, [randomNumbers, loadMoreData, page]);
-
-  // Get the layout of each item for better performance
-  const getItemLayout = (data, index) => ({
-    length: ITEM_HEIGHT,
-    offset: ITEM_HEIGHT * index,
-    index,
-  });
-
-  const renderFooter = () => {
-    if (!loading) return null;
-    return (
-      <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
-    );
-  };
-
   return (
     <SafeAreaView style={[backgroundStyle, styles.container]}>
+      {/* <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={backgroundStyle.backgroundColor}
+      /> */}
       <View style={{padding: 20}}>
         <TouchableOpacity
           activeOpacity={0.5}
@@ -630,7 +653,6 @@ const SimulateBluetoothDevice = () => {
           ]}>
           Discovered Devices:
         </Text>
-        <Text>shhshs</Text>
         {devices?.length > 0 ? (
           <>
             <FlatList
@@ -701,28 +723,13 @@ const SimulateBluetoothDevice = () => {
         ) : (
           <Text style={styles.subText}>no devices connected</Text>
         )}
-        <Text
-          style={[
-            styles.subtitle,
-            {color: isDarkMode ? Colors.white : Colors.black},
-          ]}>
-          Random Data List:
-        </Text>
-
+        <Text>Random Data:</Text>
         <FlatList
-          data={visibleData}
-          renderItem={({item}) => <RenderItem item={item} />}
+          data={randomNumbers}
+          renderItem={renderItem}
           keyExtractor={(item, index) => index.toString()}
-          getItemLayout={getItemLayout}
-          maxToRenderPerBatch={5} // Render a few items per batch
-          initialNumToRender={5} // Initially render 5 items
-          windowSize={5} // Control window size for rendering items
-          removeClippedSubviews={true} // Remove off-screen views for better performance
-          ListFooterComponent={renderFooter} // Show loading when fetching more data
-          onEndReached={() => {
-            loadMoreData(); // Trigger when list is scrolled to the end
-          }}
-          onEndReachedThreshold={0.5} // Trigger loading when scrolled to 50% of the bottom
+          contentContainerStyle={style.listContainer} // Padding around the list
+          initialNumToRender={10}
         />
       </View>
     </SafeAreaView>
@@ -743,53 +750,6 @@ const style = StyleSheet.create({
     fontSize: 16,
     color: '#333', // Example text color
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  header: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  itemContainer: {
-    padding: 16,
-    marginVertical: 8,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    elevation: 1,
-  },
-  itemText: {
-    fontSize: 16,
-  },
-  listContainer: {
-    paddingBottom: 16,
-  },
-  button: {
-    padding: 16,
-    backgroundColor: '#007BFF',
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  buttonText: {
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  footerContainer: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 16,
-    color: '#888888',
-  },
 });
 
-export {syncLocalDataWithFirestore};
-
-export default SimulateBluetoothDevice;
+export default BluetoothScanner;
