@@ -8,8 +8,9 @@ Scan for nearby Bluetooth devices.
 Connect and disconnect Bluetooth devices.
 Read and display battery levels of connected devices.
 Synchronize data with Firestore when online.
-Store data locally using EncryptedStorage when offline and sync once online.
-Prerequisites
+- Store data locally using SQLite when offline and sync once online.
+- Performance optimization with batch rendering to avoid unnecessary re-renders.
+- Automated testing with Jest.
 
 ## Before running the project, ensure you have the following installed:
 

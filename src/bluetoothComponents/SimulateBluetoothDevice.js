@@ -36,9 +36,15 @@ const SimulateBluetoothDevice = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [connectingToDevice, setConnectingToDevice] = useState(false);
   const [randomNumbers, setRandomNumbers] = useState([]);
+  const [visibleData, setVisibleData] = useState([]); // Data to display in FlatList
+  const [page, setPage] = useState(1); // Tracks current page
+  const [loading, setLoading] = useState(false);
 
   let lastUpdateTimestamp = 0;
   const UPDATE_INTERVAL = 10000;
+
+  const ITEM_HEIGHT = 50;
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     const bleManager = new BleManager();
@@ -558,12 +564,6 @@ const SimulateBluetoothDevice = () => {
     }
   };
 
-  const ITEM_HEIGHT = 50;
-  const PAGE_SIZE = 20;
-
-  const [visibleData, setVisibleData] = useState([]); // Data to display in FlatList
-  const [page, setPage] = useState(1); // Tracks current page
-  const [loading, setLoading] = useState(false);
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
